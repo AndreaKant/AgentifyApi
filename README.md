@@ -1,85 +1,88 @@
-# AI Agent POC - Un Agente AI Ibrido e Autonomo
+# AgentifyApi: A Hybrid and Agnostic AI Agent
 
-Un agente AI ibrido e autonomo basato su un'architettura a microservizi, capace di pianificare, eseguire e recuperare da errori dinamicamente, utilizzando LLM e ricerca vettoriale per interagire con diverse API (REST, gRPC, GraphQL).
+A state-of-the-art hybrid AI agent built on a decoupled microservices architecture. It leverages a two-tier thinking process: a **Strategic Planner** for high-level goal setting and a **Task Operator** for execution. The agent dynamically discovers and interacts with tools (REST, gRPC, GraphQL) through semantic search on a vector database, and features a **Recovery Agent** to autonomously handle and learn from API errors. The entire system is orchestrated via Docker Compose, creating a scalable and resilient framework for building autonomous solutions.
 
 ---
 
-## 🏛️ Architettura
+## 🏛️ Architecture
 
-Il sistema è composto da diversi microservizi Docker che collaborano per fornire un'intelligenza centralizzata.
+The system is composed of several Docker microservices that work in concert to provide a centralized intelligence. The flow is designed for resilience, adaptability, and observability.
 
 ```mermaid
 graph TD
-    subgraph "Utente"
+    subgraph "User"
         A[User Query]
     end
 
     subgraph "AI Agent (Container)"
-        B[Planner] --> C{Piano Strategico};
-        C --> D[Esecutore];
-        D -- Cerca Strumento --> E((pgvector DB));
-        D -- Chiama Tool --> F{Tool Executor};
-        F -- Errore --> G[Recovery Agent];
-        G -- Analizza Errore --> H[LLM Gateway];
-        F -- Successo --> I[Field Extractor];
-        I -- Risultato Parziale --> C;
-        C -- Piano Completato --> J[Sintetizzatore];
-        J -- Chiama LLM --> H;
-        H -- Risposta Finale --> K[Risposta per Utente];
+        B[Planner] --> C{Strategic Plan};
+        C --> D[Executor];
+        D -- Find Tool --> E((pgvector DB));
+        D -- Call Tool --> F{Tool Executor};
+        F -- on Error --> G[Recovery Agent];
+        G -- Analyze Error --> H[LLM Gateway];
+        F -- on Success --> I[Field Extractor];
+        I -- Partial Result --> C;
+        C -- Plan Completed --> J[Synthesizer];
+        J -- Call LLM --> H;
+        H -- Final Response --> K[User Response];
     end
 
-    subgraph "Microservizi di Supporto"
-        L[Indexer] -- Scrive --> E;
-        M[API Servers] --> L;
-        N[gRPC Parser] --> L;
-        H -- Chiama --> O[API Gemini/OpenAI];
+    subgraph "Support Microservices"
+        L[Indexer] -- Writes To --> E;
+        M[API Servers] -- Scanned by --> L;
+        N[gRPC Parser] -- Scanned by --> L;
+        H -- Calls --> O[External Gemini/OpenAI API];
     end
 
     A --> B;
 end
 ```
+## ✨ Key Features
 
-## ✨ Caratteristiche Principali
+-   **🧠 Hybrid Agent Architecture:** Utilizes a high-level **Planner** (using powerful models like Gemini Pro) to create strategic plans, and a low-level **Operator** (using faster, cheaper models like Gemini Flash) to execute each step, optimizing for both cost and performance.
+-   **🔌 Agnostic Tool Integration:** The agent is not hardcoded to specific tools. An `Indexer` service automatically parses API contracts (OpenAPI for REST, `.proto` for gRPC, and GraphQL schemas) and indexes them in a `pgvector` database, allowing for dynamic, semantic discovery of the best tool for any given task.
+-   **❤️‍🩹 Self-Healing & Resilience:** A dedicated `Recovery Agent` intercepts failed API calls. It uses an LLM to analyze the error, reason about the cause (e.g., invalid payload, temporary server issue), and autonomously decide on a recovery strategy, such as retrying with a corrected payload or waiting.
+-   **🏛️ Decoupled Microservices:** Built with Docker Compose, the system isolates every component—from the agent's core logic to the LLM gateway and API parsers—into its own container. This ensures scalability, maintainability, and easy development.
+-   ** GATEWAY Centralized LLM Gateway:** A dedicated Node.js microservice proxies all calls to external LLMs. This central point manages API keys, implements robust retry/fallback logic, and provides centralized logging, abstracting away complexity from the main agent.
 
-- **Architettura a Microservizi**: Ogni componente è isolato in un container Docker per massima scalabilità e manutenibilità.
-- **Agente Ibrido**: Combina un **Planner Strategico** per la visione d'insieme e un **Operatore Esecutivo** per i singoli task.
-- **Indicizzazione Semantica**: Un servizio `Indexer` analizza automaticamente i contratti delle API (OpenAPI, .proto, GraphQL) e li indicizza in un database vettoriale (`pgvector`).
-- **Gestione Errori Avanzata**: Un `Recovery Agent` dedicato implementa un ciclo ReAct per analizzare e tentare di risolvere gli errori delle API in tempo reale.
-- **LLM Gateway Centralizzato**: Un microservizio che gestisce tutte le chiamate ai modelli LLM, con logica di retry, fallback e logging.
-- **Routing Intelligente**: Seleziona dinamicamente il modello LLM più adatto (e più economico) in base alla complessità del task.
+## 🚀 Getting Started
 
-## 🚀 Come Iniziare
-
-### Prerequisiti
-- Docker e Docker Compose
+### Prerequisites
+- Docker and Docker Compose
 - Git
-- Una API key di OpenAI e una di Google AI Studio (Gemini)
+- An OpenAI API key and a Google AI Studio (Gemini) API key.
 
-### Installazione
-1. Clona il repository:
-   ```bash
-   git clone // TODO: URL
-   cd ai-agent-poc
-   ```
-2. Crea il tuo file di ambiente partendo dall'esempio:
-   ```bash
-   cp .env.example .env
-   ```
-3. Apri il file `.env` e inserisci le tue chiavi API.
-4. Avvia tutti i servizi con Docker Compose:
-   ```bash
-   docker-compose up --build -d
-   ```
-5. Esegui l'indicizzatore per popolare il database con gli strumenti disponibili:
-   ```bash
-   docker-compose exec indexer python -m indexer.main
-   ```
+### Installation
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/AndreaKant/AgentifyApi
+    ```
+2.  Navigate into the project directory:
+    ```bash
+    cd AgentifyApi
+    ```
+3.  Create your environment file from the example:
+    ```bash
+    cp .env.example .env
+    ```
+4.  Open the `.env` file and insert your API keys.
 
-## 🎮 Come Usarlo
+5.  Build and run all services in the background:
+    ```bash
+    docker-compose up --build -d
+    ```
+6.  Run the indexer to populate the database with the available tools:
+    ```bash
+    docker-compose exec indexer python -m indexer.main
+    ```
 
-Per avviare una conversazione con l'agente:
+## 🎮 How to Use
+
+To start a conversation with the agent, run the following command:
 ```bash
 docker-compose exec agent python -m agent.main
 ```
 
-A questo punto, l'agente ti saluterà e potrai iniziare a fare domande.
+At this point, the agent will greet you, and you can start asking questions. For example: 
+```What is the heaviest Pokémon between Pikachu, Charizard, and Snorlax?```
