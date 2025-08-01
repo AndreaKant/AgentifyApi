@@ -1,0 +1,14 @@
+# Usa un'immagine Python ufficiale
+FROM python:3.11-slim
+
+# Imposta la cartella di lavoro all'interno del container
+WORKDIR /app
+
+# Copia il file delle dipendenze
+COPY requirements.txt .
+
+# Installa le dipendenze
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia tutto il resto del codice
+COPY . .

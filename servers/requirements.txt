@@ -1,0 +1,10 @@
+grpcio
+grpcio-tools
+fastapi
+uvicorn
+strawberry-graphql[fastapi]
+psycopg2-binary
+pgvector
+python-dotenv
+openai
+requests

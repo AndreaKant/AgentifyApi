@@ -1,0 +1,24 @@
+# Una query per recuperare dati
+type Query {
+  """
+  Ottiene un prodotto finto dal magazzino dato il suo ID.
+  Utile quando l'utente chiede informazioni su un prodotto specifico.
+  """
+  getProduct(productId: ID!): Product
+}
+
+# Una mutazione per modificare dati
+type Mutation {
+  """
+  Crea un nuovo prodotto nel catalogo.
+  Usalo quando l'utente vuole aggiungere un nuovo articolo.
+  """
+  createProduct(name: String!, price: Float!): Product
+}
+
+type Product {
+  id: ID!
+  name: String!
+  price: Float!
+  inStock: Boolean!
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package user;
+
+// Il servizio per gestire gli utenti. Utile per recuperare o creare informazioni sugli utenti.
+service UserService {
+  // Recupera un utente specifico dato il suo ID.
+  // Usa questa funzione quando ti viene chiesto di trovare un utente specifico.
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+}
+
+message GetUserRequest {
+  int32 id = 1;
+}
+
+message UserResponse {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  bool is_active = 4;
+}
