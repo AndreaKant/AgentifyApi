@@ -77,11 +77,10 @@ AgentifyApi:
 ### Option 3: GraphQL
 1. Copy your schema to contracts/schema.graphql
 2. The indexer will parse it automatically
-3. **IMPORTANT**: until I implement abstract executor it will also be necessary to modify the executors file to add more graphQL services
 
 After adding new APIs, re-run the indexer:
 ```bash
-    docker-compose exec indexer python -m indexer.main
+    docker-compose up -d
 ```
 
 ## 🏗️ Architecture Overview

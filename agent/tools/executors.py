@@ -3,8 +3,22 @@ import agent.tools.user_service_pb2 as user_service_pb2
 import agent.tools.user_service_pb2_grpc as user_service_pb2_grpc
 import requests
 import json
+from google.protobuf.json_format import MessageToDict
 
 from agent.core.field_extractor import FieldExtractor
+
+GRPC_REGISTRY = {
+    # Chiave: (nome_servizio, nome_rpc)
+    ("UserService", "GetUser"): {
+        "stub": user_service_pb2_grpc.UserServiceStub,
+        "request_message": user_service_pb2.GetUserRequest,
+    }
+    # Esempio: se avessi un OrderService, aggiungeresti una nuova voce qui
+    # ("OrderService", "GetOrder"): {
+    #     "stub": order_service_pb2_grpc.OrderServiceStub,
+    #     "request_message": order_service_pb2.GetOrderRequest,
+    # }
+}
 
 def execute_tool(tool_call, context=None):
     metadata = tool_call.get("tool_metadata", {})
@@ -50,38 +64,42 @@ def execute_tool(tool_call, context=None):
     return result
 
 def execute_grpc_call(tool_call):
-    """Esegue una chiamata a un server gRPC."""
+    """Esegue una chiamata a un server gRPC in modo generico usando il registro."""
     metadata = tool_call.get("tool_metadata", {})
     payload = tool_call.get("payload", {})
     service_name = metadata.get("service")
     rpc_name = metadata.get("rpc")
+    
+    key = (service_name, rpc_name)
+    if key not in GRPC_REGISTRY:
+        return {"success": False, "error": f"Chiamata gRPC non registrata: {service_name}.{rpc_name}"}
 
-    # Collega al server gRPC (che è in Docker sulla porta 50051)
+    config = GRPC_REGISTRY[key]
+    StubClass = config["stub"]
+    RequestMessageClass = config["request_message"]
+
     channel = grpc.insecure_channel('grpc_server:50051')
     
     try:
-        if service_name == "UserService" and rpc_name == "GetUser":
-            stub = user_service_pb2_grpc.UserServiceStub(channel)
+        stub_instance = StubClass(channel)
+        request_instance = RequestMessageClass(**payload)
+        rpc_method_to_call = getattr(stub_instance, rpc_name)
 
-            user_id = payload.get("id") or payload.get("userId") or payload.get("user_id")
-            if user_id is None:
-                return {"success": False, "error": "ID utente non trovato nel payload"}
-            # Prepara la richiesta gRPC usando i dati dal payload
-            request = user_service_pb2.GetUserRequest(id=int(user_id))
-            # Esegui la chiamata
-            response = stub.GetUser(request)
-            return {"success": True, "data": {
-                "id": response.id,
-                "name": response.name,
-                "email": response.email,
-                "is_active": response.is_active
-            }}
-        else:
-            return {"success": False, "error": f"Chiamata gRPC non implementata: {service_name}.{rpc_name}"}
+        print(f"  -> Esecuzione gRPC: {service_name}.{rpc_name}")
+        print(f"     Request: {request_instance}")
+
+        response = rpc_method_to_call(request_instance)
+        
+        response_dict = MessageToDict(response, preserving_proto_field_name=True)
+        
+        return {"success": True, "data": response_dict}
+
     except grpc.RpcError as e:
         return {"success": False, "error": f"Errore gRPC: {e.details()}"}
+    except TypeError as e:
+        return {"success": False, "error": f"Errore nel payload della richiesta: {e}"}
     except Exception as e:
-        return {"success": False, "error": f"Errore imprevisto: {str(e)}"}
+        return {"success": False, "error": f"Errore imprevisto gRPC: {str(e)}"}
 
 
 def execute_graphql_call(tool_call):
