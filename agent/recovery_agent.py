@@ -70,11 +70,20 @@ class RecoveryAgent:
         
         **Esempi di Risposta JSON:**
         - Per un errore di parametro mancante: 
-            {
+            {{
                 "strategy": "retry_with_fix", 
                 "reasoning": "Manca order_id nel payload", 
-                "new_payload": {"order_id": "ord-002"}  // ESTRAI IL VALORE DAL TASK
-            }
+                "new_payload": {{"order_id": "ord-002"}}  // ESTRAI IL VALORE DAL TASK
+            }}
+        **- Per un campo inesistente in una query GraphQL:**
+            {{
+                "strategy": "retry_with_fix",
+                "reasoning": "Il campo 'description' non esiste. Rimuovo quel campo dalla stringa della query GraphQL per risolvere il problema.",
+                "new_payload": {{
+                    "query": "query GetProductById($productId: ID!) {{ getProduct(productId: $productId) {{ id name price inStock }} }}",
+                    "variables": {{"productId": "101"}}
+                }}
+            }}
         - Per un errore di validazione: {{"strategy": "retry_with_fix", "reasoning": "Il rating era 10, ma deve essere <= 5. Lo imposto a 5.", "new_payload": {{"rating": 5, ...}}}}
         - Per un 404: {{"strategy": "explain_to_user", "reasoning": "L'ID richiesto non esiste, non ha senso riprovare.", "explanation": "Mi dispiace, ma sembra che l'elemento che stai cercando non esista. Forse c'è un errore di battitura nell'ID?"}}
         - Per un 503: {{"strategy": "wait_and_retry", "reasoning": "Il server remoto è temporaneamente sovraccarico."}}

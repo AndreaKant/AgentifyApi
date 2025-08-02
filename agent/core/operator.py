@@ -66,6 +66,16 @@ def execute_task_and_prepare_call(task_description, context_results, relevant_fu
         "payload": { ... },
         "extract_fields": ["campo1", "campo2.sottocampo", "array[].campo"]
     }
+
+    **Per chiamate GraphQL, DEVI usare questo formato specifico:**
+    {
+        "action": "call_tool",
+        "tool_metadata": { ... },
+        "payload": {
+            "query": "query GetProduct($prodId: ID!) { getProduct(productId: $prodId) { id name price } }",
+            "variables": { "prodId": "prod-123" }
+        }
+    }
     """
     
     human_prompt = f"""

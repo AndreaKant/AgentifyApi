@@ -85,57 +85,31 @@ def execute_grpc_call(tool_call):
 
 
 def execute_graphql_call(tool_call):
-    """Esegue una chiamata a un server GraphQL."""
-    metadata = tool_call.get("tool_metadata", {})
+    """
+    Esegue una chiamata GraphQL generica.
+    Si aspetta che il payload contenga 'query' e 'variables'.
+    """
     payload = tool_call.get("payload", {})
-    operation_type = metadata.get("operation_type") # Query o Mutation
-    operation_name = metadata.get("operation_name")
+    
+    # L'LLM deve fornirci la query completa e le variabili
+    query_string = payload.get("query")
+    variables = payload.get("variables", {})
+
+    if not query_string:
+        return {"success": False, "error": "Payload per GraphQL non conteneva una 'query'."}
 
     # L'URL del nostro server GraphQL in Docker
     url = "http://graphql_server:8000/graphql"
-    
-    query_string = ""
-    variables = {}
+    print(f"  -> Esecuzione GraphQL su {url}")
+    print(f"     Query: {query_string.strip()}")
+    print(f"     Variables: {variables}")
 
     try:
-        # Costruiamo la query e le variabili dinamicamente in base all'operazione
-        if operation_type == "Query" and operation_name == "getProduct":
-            query_string = """
-                query GetProductById($prodId: ID!) {
-                  getProduct(productId: $prodId) {
-                    id
-                    name
-                    price
-                    inStock
-                  }
-                }
-            """
-            variables = {"prodId": payload.get("productId")}
-
-        elif operation_type == "Mutation" and operation_name == "createProduct":
-            query_string = """
-                mutation CreateNewProduct($name: String!, $price: Float!) {
-                  createProduct(name: $name, price: $price) {
-                    id
-                    name
-                    price
-                  }
-                }
-            """
-            variables = {"name": payload.get("name"), "price": payload.get("price")}
-            
-        else:
-            return {"success": False, "error": f"Operazione GraphQL non implementata: {operation_name}"}
-
-        # Prepariamo la richiesta POST standard per GraphQL
         json_payload = {"query": query_string, "variables": variables}
-        
         response = requests.post(url, json=json_payload)
-        response.raise_for_status() # Lancia un errore per status code 4xx o 5xx
+        response.raise_for_status()
 
         response_data = response.json()
-        
-        # GraphQL può restituire errori anche con status 200 OK
         if "errors" in response_data:
             return {"success": False, "error": f"Errore GraphQL: {response_data['errors']}"}
         else:
