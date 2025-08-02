@@ -47,12 +47,12 @@ AgentifyApi:
     GEMINI_API_KEY="AIza..."
    ```
 
-3. **Start the system**
+4. **Start the system**
     ```bash
    docker-compose up -d
    ```
 
-3. **Try it!**
+5. **Try it!**
     ```bash
    docker-compose exec agent python -m agent.main
    ```
@@ -70,13 +70,16 @@ AgentifyApi:
    ```
 
 ### Option 2: gRPC Service
-1. Copy your .proto file to contracts/
-2. It will be automatically detected and parsed
-3. **IMPORTANT**: until I implement abstract executor it will also be necessary to modify the executors file to add more gRPC services
+1.  Copy your `.proto` file into the `contracts/` directory. The indexer will parse it automatically.
+2.  Generate the Python stubs from your `.proto` file. You can run this command from the root of the project:
+    ```bash
+    python -m grpc_tools.protoc -I./contracts --python_out=./agent/tools --grpc_python_out=./agent/tools your_service.proto
+    ```
+3.  Import the new stubs and register the service in the `GRPC_REGISTRY` at the top of `agent/tools/executors.py`.
 
 ### Option 3: GraphQL
-1. Copy your schema to contracts/schema.graphql
-2. The indexer will parse it automatically
+1.  Copy your `schema.graphql` file into the `contracts/` directory.
+2.  The indexer will parse it automatically. The generic executor will handle it.
 
 After adding new APIs, re-run the indexer:
 ```bash
