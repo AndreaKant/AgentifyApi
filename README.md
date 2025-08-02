@@ -86,15 +86,17 @@ After adding new APIs, re-run the indexer:
 
 ## 🏗️ Architecture Overview
 ```mermaid
-Your Query → [Strategic Planner] → Multi-Step Plan
-                                        ↓
-                              [Task Operator] → Finds Best API
-                                        ↓
-                               [API Executor] → Makes the Call
-                                        ↓
-                              [Recovery Agent] → Handles Errors
-                                        ↓
-                              [Synthesizer] → Natural Response
+graph TD
+    A[Your Query] --> B[Strategic Planner]
+    B --> C[Multi-Step Plan]
+    C --> D[Task Operator]
+    D --> E[Finds Best API]
+    E --> F[API Executor]
+    F --> G[Makes the Call]
+    G --> H[Recovery Agent]
+    H --> I[Handles Errors]
+    I --> J[Synthesizer]
+    J --> K[Natural Response]
 ```
 
 ### Key Components:
