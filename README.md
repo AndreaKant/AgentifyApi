@@ -1,88 +1,119 @@
-# AgentifyApi: A Hybrid and Agnostic AI Agent
+# AgentifyApi: Universal AI Agent for Any API
 
-A state-of-the-art hybrid AI agent built on a decoupled microservices architecture. It leverages a two-tier thinking process: a **Strategic Planner** for high-level goal setting and a **Task Operator** for execution. The agent dynamically discovers and interacts with tools (REST, gRPC, GraphQL) through semantic search on a vector database, and features a **Recovery Agent** to autonomously handle and learn from API errors. The entire system is orchestrated via Docker Compose, creating a scalable and resilient framework for building autonomous solutions.
+Transform any REST, gRPC, or GraphQL API into an AI-powered assistant. No coding required - just point to your API contracts and start asking questions in plain English.
 
 ---
 
-## 🏛️ Architecture
+## 🎯 What is AgentifyApi?
 
-The system is composed of several Docker microservices that work in concert to provide a centralized intelligence. The flow is designed for resilience, adaptability, and observability.
+AgentifyApi is an intelligent middleware that:
 
-```mermaid
-graph TD
-    subgraph "User"
-        A[User Query]
-    end
+- **Reads** your API contracts (OpenAPI/Swagger, .proto files, GraphQL schemas)
+- **Understands** what each endpoint does using AI
+- **Executes** complex multi-step operations autonomously
+- **Recovers** from errors intelligently without human intervention
 
-    subgraph "AI Agent (Container)"
-        B[Planner] --> C{Strategic Plan};
-        C --> D[Executor];
-        D -- Find Tool --> E((pgvector DB));
-        D -- Call Tool --> F{Tool Executor};
-        F -- on Error --> G[Recovery Agent];
-        G -- Analyze Error --> H[LLM Gateway];
-        F -- on Success --> I[Field Extractor];
-        I -- Partial Result --> C;
-        C -- Plan Completed --> J[Synthesizer];
-        J -- Call LLM --> H;
-        H -- Final Response --> K[User Response];
-    end
+### Example in Action
 
-    subgraph "Support Microservices"
-        L[Indexer] -- Writes To --> E;
-        M[API Servers] -- Scanned by --> L;
-        N[gRPC Parser] -- Scanned by --> L;
-        H -- Calls --> O[External Gemini/OpenAI API];
-    end
+You: "Find the user who made the most expensive order last month and check if they left any reviews"
 
-    A --> B;
-end
-```
-## ✨ Key Features
+AgentifyApi:
 
--   **🧠 Hybrid Agent Architecture:** Utilizes a high-level **Planner** (using powerful models like Gemini Pro) to create strategic plans, and a low-level **Operator** (using faster, cheaper models like Gemini Flash) to execute each step, optimizing for both cost and performance.
--   **🔌 Agnostic Tool Integration:** The agent is not hardcoded to specific tools. An `Indexer` service automatically parses API contracts (OpenAPI for REST, `.proto` for gRPC, and GraphQL schemas) and indexes them in a `pgvector` database, allowing for dynamic, semantic discovery of the best tool for any given task.
--   **❤️‍🩹 Self-Healing & Resilience:** A dedicated `Recovery Agent` intercepts failed API calls. It uses an LLM to analyze the error, reason about the cause (e.g., invalid payload, temporary server issue), and autonomously decide on a recovery strategy, such as retrying with a corrected payload or waiting.
--   **🏛️ Decoupled Microservices:** Built with Docker Compose, the system isolates every component—from the agent's core logic to the LLM gateway and API parsers—into its own container. This ensures scalability, maintainability, and easy development.
--   ** GATEWAY Centralized LLM Gateway:** A dedicated Node.js microservice proxies all calls to external LLMs. This central point manages API keys, implements robust retry/fallback logic, and provides centralized logging, abstracting away complexity from the main agent.
+1. Searches for orders endpoint → Finds GET /orders
+2. Filters orders by date → Executes with proper parameters
+3. Finds user endpoint → GET /users/{id}
+4. Finds reviews endpoint → GET /reviews?userId={id}
+5. Returns: "User John Doe (ID: 123) made an order of $1,459. They left 3 reviews, all 5-star ratings."
 
-## 🚀 Getting Started
+## 🚀 Quick Start (5 minutes)
 
 ### Prerequisites
-- Docker and Docker Compose
-- Git
-- An OpenAI API key and a Google AI Studio (Gemini) API key.
+- Docker & Docker Compose
+- OpenAI API key (for embeddings) [very easy to change provider]
+- Google AI Studio API key (for Gemini) - [Get it free here](https://makersuite.google.com/app/apikey)
 
 ### Installation
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/AndreaKant/AgentifyApi
-    ```
-2.  Navigate into the project directory:
-    ```bash
-    cd AgentifyApi
-    ```
-3.  Create your environment file from the example:
-    ```bash
-    cp .env.example .env
-    ```
-4.  Open the `.env` file and insert your API keys.
 
-5.  Build and run all services in the background:
-    ```bash
-    docker-compose up --build -d
-    ```
-6.  Run the indexer to populate the database with the available tools:
-    ```bash
-    docker-compose exec indexer python -m indexer.main
-    ```
+1. **Clone and setup**
+   ```bash
+   git clone https://github.com/AndreaKant/AgentifyApi
+   cd AgentifyApi
+   cp .env.example .env
+   ```
 
-## 🎮 How to Use
+2. **Add your API keys to .env**
+    ```env
+   OPENAI_API_KEY="sk-..."
+    GEMINI_API_KEY="AIza..."
+   ```
 
-To start a conversation with the agent, run the following command:
+3. **Start the system**
+    ```bash
+   docker-compose up -d
+   ```
+
+3. **Try it!**
+    ```bash
+   docker-compose exec agent python -m agent.main
+   ```
+
+## 🔧 Adding Your Own APIs
+
+### Option 1: REST API (OpenAPI/Swagger)
+1. Make sure your API has an OpenAPI spec endpoint (e.g., `/openapi.json`)
+2. Add it to `indexer/main.py`:
+   ```python
+   rest_api_targets = [
+       {"name": "Your API", "url": "http://your-api:8080/openapi.json"},
+       # ... existing APIs
+   ]
+   ```
+
+### Option 2: gRPC Service
+1. Copy your .proto file to contracts/
+2. It will be automatically detected and parsed
+3. **IMPORTANT**: until I implement abstract executor it will also be necessary to modify the executors file to add more gRPC services
+
+### Option 3: GraphQL
+1. Copy your schema to contracts/schema.graphql
+2. The indexer will parse it automatically
+3. **IMPORTANT**: until I implement abstract executor it will also be necessary to modify the executors file to add more graphQL services
+
+After adding new APIs, re-run the indexer:
 ```bash
-docker-compose exec agent python -m agent.main
+    docker-compose exec indexer python -m indexer.main
 ```
 
-At this point, the agent will greet you, and you can start asking questions. For example: 
-```What is the heaviest Pokémon between Pikachu, Charizard, and Snorlax?```
+## 🏗️ Architecture Overview
+```mermaid
+Your Query → [Strategic Planner] → Multi-Step Plan
+                                        ↓
+                              [Task Operator] → Finds Best API
+                                        ↓
+                               [API Executor] → Makes the Call
+                                        ↓
+                              [Recovery Agent] → Handles Errors
+                                        ↓
+                              [Synthesizer] → Natural Response
+```
+
+### Key Components:
+
+- **Strategic Planner**: Uses Gemini Pro to break down complex requests
+- **Task Operator**: Selects the right API for each step
+- **Recovery Agent**: Implements ReAct pattern for error recovery
+- **Vector Database**: Semantic search for finding relevant APIs
+
+## 🐛 Troubleshooting
+
+Almost all information are currently printed in console
+
+
+## 🧪 Tests
+[Coming soon]
+
+## 🎥 Video Tutorial
+[Coming soon]
+
+## 📄 License
+MIT License - see LICENSE file
