@@ -2,7 +2,7 @@
 import time
 import json
 
-from .core.llm_api import call_llm
+from utils.llm_api import call_llm
 from .tools.executors import execute_tool  # Assumendo che execute_tool sia qui
 
 LLM_ERROR_ANALYZER = "gemini-1.5-flash-latest"  # Veloce ed economico per l'analisi
@@ -64,11 +64,17 @@ class RecoveryAgent:
         2. "wait_and_retry": Se l'errore sembra temporaneo (es. server_error, timeout_error).
         3. "explain_to_user": Se l'errore è definitivo e non recuperabile (es. not_found, auth_error) e deve essere spiegato all'utente.
         4. "give_up": Come ultima risorsa, se l'errore è incomprensibile o non ci sono alternative.
+        5. "request_login": **USA QUESTA STRATEGIA se l'errore è un 401 o 403 (Unauthorized/Forbidden). Significa che devi chiedere all'utente di fare il login.**
         
         **DECISIONE:**
         Analizza il problema e rispondi ESCLUSIVAMENTE con un oggetto JSON che descriva la tua strategia.
         
         **Esempi di Risposta JSON:**
+        **- Per un errore 401 Unauthorized:**
+            {{
+                "strategy": "request_login",
+                "reasoning": "La risorsa richiesta è protetta e non sono autenticato. Devo chiedere all'utente le credenziali per poter procedere."
+            }}
         - Per un errore di parametro mancante: 
             {{
                 "strategy": "retry_with_fix", 

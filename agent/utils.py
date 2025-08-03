@@ -1,17 +1,29 @@
-def find_most_relevant_functions(user_query_embedding, conn, top_k=5):
-    """Trova le 'top_k' funzioni più rilevanti nel DB usando la ricerca vettoriale."""
+from utils.embeddings import get_embedding
+
+def find_most_relevant_functions(task_description: str, user_query: str, conn, top_k=5):
+    """
+    Trova le 'top_k' funzioni più rilevanti nel DB, usando SIA il task
+    corrente CHE la query originale dell'utente per un contesto più ricco.
+    """
+    
+    text_to_embed = f"Obiettivo utente: {user_query}\nTask specifico: {task_description}"
+    
+    query_embedding = get_embedding(text_to_embed)
+
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT metadata, source_contract 
+            SELECT metadata, source_contract, description -- Aggiungi la descrizione
             FROM api_functions 
             ORDER BY embedding <=> %s::vector 
             LIMIT %s
             """,
-            (user_query_embedding, top_k)
+            (str(query_embedding), top_k)
         )
         results = cur.fetchall()
-    return results
+    
+    keys = ["metadata", "source_contract", "description"]
+    return [dict(zip(keys, row)) for row in results]
 
 def resolve_payload_variables(payload, context_results):
     """Sostituisce le variabili nel payload con i dati dagli step precedenti."""

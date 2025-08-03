@@ -4,7 +4,7 @@ import agent.tools.user_service_pb2_grpc as user_service_pb2_grpc
 import requests
 import json
 from google.protobuf.json_format import MessageToDict
-
+from agent.core.session_manager import session_manager
 from agent.core.field_extractor import FieldExtractor
 
 GRPC_REGISTRY = {
@@ -181,12 +181,19 @@ def execute_rest_call(tool_call):
     if body_payload:
         print(f"     Body: {body_payload}")
 
+    headers = {}
+    token = session_manager.get_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+        print("  -> Token di sessione aggiunto alla richiesta.")
+
     try:
         response = requests.request(
             method, 
             url, 
             params=query_params or None,
-            json=body_payload or None
+            json=body_payload or None,
+            headers=headers or None
         )
         response.raise_for_status()
         

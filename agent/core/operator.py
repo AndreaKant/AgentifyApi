@@ -1,5 +1,5 @@
 import json
-from .llm_api import call_llm
+from utils.llm_api import call_llm
 
 def execute_task_and_prepare_call(task_description, context_results, relevant_functions, model_to_use):
     """LLM Operativo: sceglie un tool per un singolo task, usando i risultati precedenti."""

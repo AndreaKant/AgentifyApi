@@ -83,7 +83,7 @@ class FieldExtractor:
     # Aggiungi una versione più smart che usa LLM
     def smart_extract(data: Union[Dict, List], current_task: str, user_query: str = None, full_plan: list = None, llm_model: str = "gemini-2.5-flash") -> Union[Dict, List]:
         """Usa un LLM per decidere quali campi estrarre basandosi sul task."""
-        from ..core.llm_api import call_llm
+        from utils.llm_api import call_llm
         
         data_sample = json.dumps(data, indent=2)
         if len(data_sample) > 1500:

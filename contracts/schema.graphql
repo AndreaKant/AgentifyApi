@@ -1,24 +1,109 @@
-# Una query per recuperare dati
-type Query {
-  """
-  Ottiene un prodotto finto dal magazzino dato il suo ID.
-  Utile quando l'utente chiede informazioni su un prodotto specifico.
-  """
-  getProduct(productId: ID!): Product
-}
+# Uno schema GraphQL per un sistema di inventario di e-commerce complesso.
+# Include prodotti, varianti (es. taglia/colore), categorie gerarchiche, fornitori e magazzini.
 
-# Una mutazione per modificare dati
-type Mutation {
-  """
-  Crea un nuovo prodotto nel catalogo.
-  Usalo quando l'utente vuole aggiungere un nuovo articolo.
-  """
-  createProduct(name: String!, price: Float!): Product
-}
-
+"""
+Rappresenta un singolo articolo nel catalogo.
+Un prodotto può avere più varianti (es. diverse taglie o colori).
+"""
 type Product {
   id: ID!
   name: String!
-  price: Float!
-  inStock: Boolean!
+  description: String!
+  basePrice: Float!
+  category: Category!
+  supplier: Supplier!
+  "Elenco di tutte le varianti disponibili per questo prodotto (es. taglie, colori)."
+  variants: [ProductVariant!]!
+  "Livelli di stock per questo prodotto nei vari magazzini."
+  stockLevels: [StockLevel!]!
+}
+
+"""
+Una variante specifica di un prodotto, come una maglietta rossa di taglia M.
+Ha un suo SKU (Stock Keeping Unit) e può avere un prezzo diverso da quello base.
+"""
+type ProductVariant {
+  id: ID!
+  sku: String!
+  name: String!
+  "Quanto il prezzo di questa variante si discosta da quello del prodotto base (può essere positivo o negativo)."
+  priceModifier: Float!
+  attributes: [Attribute!]!
+}
+
+"""Un semplice attributo chiave-valore per descrivere una variante."""
+type Attribute {
+  key: String!
+  value: String!
+}
+
+"""
+Una categoria di prodotti. Le categorie possono essere nidificate.
+Esempio: Elettronica > Computer > Tastiere.
+"""
+type Category {
+  id: ID!
+  name: String!
+  "La categoria genitore, se questa è una sotto-categoria."
+  parent: Category
+  "Le sotto-categorie di questa categoria."
+  children: [Category!]!
+  "I prodotti che appartengono direttamente a questa categoria."
+  products(inStockOnly: Boolean = false): [Product!]!
+}
+
+"""Rappresenta un fornitore che fornisce i prodotti."""
+type Supplier {
+  id: ID!
+  name: String!
+  contactEmail: String
+  "I prodotti forniti da questo fornitore."
+  products: [Product!]!
+}
+
+"""Un magazzino dove i prodotti sono stoccati."""
+type Warehouse {
+  id: ID!
+  name: String!
+  location: String!
+}
+
+"""Indica la quantità di un prodotto specifico in un dato magazzino."""
+type StockLevel {
+  product: Product!
+  warehouse: Warehouse!
+  quantity: Int!
+}
+
+# La radice per tutte le query (operazioni di lettura).
+type Query {
+  "Recupera un singolo prodotto dal suo ID."
+  product(id: ID!): Product
+
+  "Recupera tutti i prodotti che appartengono a una specifica categoria."
+  productsByCategory(categoryId: ID!): [Product!]!
+
+  "Cerca prodotti per nome o descrizione. Utile per ricerche a testo libero."
+  searchProducts(query: String!): [Product!]!
+
+  "Ottiene l'albero completo delle categorie. Utile per capire la struttura del catalogo."
+  allCategories: [Category!]!
+  
+  "Controlla lo stock di tutti i prodotti in un magazzino specifico."
+  warehouseStock(warehouseId: ID!): [StockLevel!]!
+  
+  "Recupera un singolo fornitore dal suo ID."
+  supplier(id: ID!): Supplier
+
+  "Ottiene la lista di tutti i fornitori disponibili nel sistema."
+  allSuppliers: [Supplier!]!
+}
+
+# La radice per tutte le mutazioni (operazioni di scrittura/modifica).
+type Mutation {
+  "Aggiunge un nuovo prodotto al catalogo. Richiede un ID di categoria e fornitore esistenti."
+  createProduct(name: String!, description: String!, basePrice: Float!, categoryId: ID!, supplierId: ID!): Product
+
+  "Aggiorna la quantità di un prodotto in un magazzino. Utile per gestire l'inventario."
+  updateStock(productId: ID!, warehouseId: ID!, newQuantity: Int!): StockLevel
 }

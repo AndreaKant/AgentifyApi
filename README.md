@@ -29,7 +29,7 @@ AgentifyApi:
 
 ### Prerequisites
 - Docker & Docker Compose
-- OpenAI API key (for embeddings) [very easy to change provider]
+- OpenAI API key (for embeddings)
 - Google AI Studio API key (for Gemini) - [Get it free here](https://makersuite.google.com/app/apikey)
 
 ### Installation
@@ -52,7 +52,12 @@ AgentifyApi:
    docker-compose up -d
    ```
 
-5. **Try it!**
+5. **Load apis and create detailed descriptions**
+    ```bash
+   docker-compose exec indexer python -m indexer.main
+   ```
+
+6. **Try it!**
     ```bash
    docker-compose exec agent python -m agent.main
    ```
@@ -83,7 +88,7 @@ AgentifyApi:
 
 After adding new APIs, re-run the indexer:
 ```bash
-    docker-compose up -d
+    docker-compose exec indexer python -m indexer.main
 ```
 
 ## 🏗️ Architecture Overview

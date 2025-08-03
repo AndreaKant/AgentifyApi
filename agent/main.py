@@ -7,7 +7,9 @@ from .core.planner import StrategicPlanner
 from .core.operator import execute_task_and_prepare_call
 from .recovery_agent import RecoveryAgent
 from .utils import find_most_relevant_functions, resolve_payload_variables
-from .core.llm_api import call_llm
+from utils.llm_api import call_llm
+from .core.session_manager import session_manager
+from .tools.executors import execute_tool
 
 # --- Import utility condivise ---
 from utils.database import get_db_connection
@@ -71,14 +73,16 @@ def main():
                 model_for_operator = LLM_SIMPLE_OPERATOR
                 print(f"   - 🧠 Routing a: {LLM_SIMPLE_OPERATOR} (Task semplice e diretto)")
 
-            task_relevant_functions = find_most_relevant_functions(task_embedding, conn, top_k=3)
+            task_relevant_functions = find_most_relevant_functions(
+                task_description,
+                user_query, conn, top_k=3)
             
              # --- LOGGING AGGRESSIVO PER L'OPERATIVO ---
             print(f"\033[94m   🤖 [OPERATIVO]\033[0m Chiamata a {model_for_operator} con i seguenti dati:")
             print("\033[90m      --- INIZIO CONTESTO PER OPERATIVO ---")
             print(f"      OBIETTIVO: {task_description}")
             print(f"      DATI DISPONIBILI: {json.dumps(chain_results, indent=2, ensure_ascii=False)}")
-            print(f"      STRUMENTI RILEVANTI: {[func[0].get('name') for func in task_relevant_functions]}")
+            print(f"      STRUMENTI RILEVANTI: {[func.get('metadata', {}).get('name') for func in task_relevant_functions]}")
             print("      --- FINE CONTESTO PER OPERATIVO ---\033[0m")
             # ---------------------------------------------
             
@@ -99,10 +103,35 @@ def main():
                 if result.get("success"):
                     step_output_name = f"step_{i+1}_result"
                     chain_results[step_output_name] = result.get("data")
-                    # Rimettiamo il log del risultato per il debug
                     print(f"\033[92m   ✅ Step completato. Risultato salvato: {json.dumps(result.get('data'), ensure_ascii=False, indent=2)}\033[0m")
                 else:
-                    if result.get("is_final_error"):
+                    if result.get("strategy") == "request_login":
+                        print("🔒 L'agente ha bisogno di autenticarsi. Avvio del flusso di login.")
+                        
+                        username = input("👤 Inserisci il tuo username: ")
+                        password = input("🔑 Inserisci la tua password: ")
+
+                        login_tool_call = {
+                            "tool_metadata": {
+                                "type": "rest",
+                                "base_url": "http://rest_server:8001",
+                                "path_template": "/login",
+                                "method": "POST"
+                            },
+                            "payload": {"username": username, "password": password}
+                        }
+                        login_result = execute_tool(login_tool_call)
+
+                        if login_result.get("success") and "access_token" in login_result.get("data", {}):
+                            token = login_result["data"]["access_token"]
+                            session_manager.set_token(token)
+                            print("✅ Login riuscito! Ora ritento l'operazione originale...")
+                            continue
+                        else:
+                            print("❌ Login fallito. Interruzione del piano.")
+                            execution_success = False
+                            break
+                    elif result.get("is_final_error"):
                         explanation = result.get("explanation")
                         print(f"   ❌ Step fallito in modo definitivo. Spiegazione: {explanation}")
                         chain_results[f"step_{i+1}_error"] = explanation
@@ -115,16 +144,11 @@ def main():
                 user_answer = input(f"🤖 {prepared_tool_call.get('question')} \n> ")
                 chain_results[f"step_{i+1}_user_info"] = user_answer
                 print("   ✅ Informazione acquisita dall'utente.")
-                # NON incrementare i, così rifà lo stesso task
                 continue
 
             elif action == "provide_answer":
-                # L'operatore ha già la risposta
                 chain_results[f"step_{i+1}_result"] = prepared_tool_call.get("answer")
                 print(f"   ✅ L'operatore ha fornito direttamente la risposta: {prepared_tool_call.get('answer')}")
-                # Qui potresti anche settare un flag per saltare direttamente al synth
-
-            # Nel main.py, dopo elif action == "ask_user", AGGIUNGI:
 
             elif action == "suggest_additional_step":
                 reasoning = prepared_tool_call.get("reasoning")

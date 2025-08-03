@@ -14,6 +14,8 @@ def get_db_connection():
         conn = psycopg2.connect(
             dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST, port=DB_PORT
         )
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
         register_vector(conn)
         print("Connessione al database riuscita.")
         return conn

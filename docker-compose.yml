@@ -100,7 +100,7 @@ services:
       dockerfile: Dockerfile.python
     container_name: indexer
     working_dir: /app
-    command: python -m indexer.main
+    command: tail -f /dev/null
     volumes:
       - .:/app
     depends_on:

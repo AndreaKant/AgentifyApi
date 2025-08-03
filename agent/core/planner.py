@@ -1,10 +1,26 @@
 import json
-from .llm_api import call_llm
+from utils.llm_api import call_llm
 
 LLM_STRATEGIST = "gemini-2.5-pro"
 
 class StrategicPlanner:
     def create_strategic_plan(self, user_query, available_tools_summary, context):
+        
+        # <<< INIZIO LOGGING PER DEBUG >>>
+        print("\n" + "="*50)
+        print("🧠 INFORMAZIONI A DISPOSIZIONE DELLO STRATEGIC PLANNER 🧠")
+        print("="*50)
+        print(f"Richiesta Utente: {user_query}\n")
+        print("--- Strumenti Disponibili (Top 7 rilevanti) ---")
+        # Stampa gli strumenti in un formato leggibile
+        for i, tool in enumerate(available_tools_summary):
+            print(f"  {i+1}. Nome: {tool.get('name')}")
+            print(f"     Descrizione: {tool.get('description')}\n")
+        print("--- Contesto della Conversazione Finora ---")
+        print(json.dumps(context, indent=2, ensure_ascii=False))
+        print("="*50 + "\n")
+        # <<< FINE LOGGING PER DEBUG >>>
+        
         prompt = f"""
         Sei un **Architetto di Soluzioni AI iper-efficiente**. Il tuo unico compito è tradurre una richiesta utente in un piano d'azione JSON **logico, diretto e senza passaggi inutili**.
 

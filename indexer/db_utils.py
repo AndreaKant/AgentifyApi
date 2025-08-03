@@ -5,13 +5,13 @@ EMBEDDING_DIMENSIONS = 1536
 def create_table_if_not_exists(conn):
     """Crea la tabella per le funzioni API se non esiste già."""
     with conn.cursor() as cur:
-        cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
         cur.execute(f"""
             CREATE TABLE IF NOT EXISTS api_functions (
                 id SERIAL PRIMARY KEY,
                 embedding VECTOR({EMBEDDING_DIMENSIONS}),
                 metadata JSONB,
-                source_contract TEXT
+                source_contract TEXT,
+                description TEXT
             );
         """)
         print("Tabella 'api_functions' pronta.")
@@ -26,8 +26,8 @@ def insert_api_functions(conn, all_api_functions, get_embedding_func):
             embedding = get_embedding_func(text_to_embed) # Usa la funzione passata come argomento
             print(f"  -> Calcolato embedding per '{func['name']}'")
             cur.execute(
-                "INSERT INTO api_functions (embedding, metadata, source_contract) VALUES (%s, %s, %s)",
-                (embedding, json.dumps(func.get('metadata', {})), func.get('source_contract', ''))
+                "INSERT INTO api_functions (embedding, metadata, source_contract, description) VALUES (%s, %s, %s, %s)",
+                (embedding, json.dumps(func.get('metadata', {})), func.get('source_contract', ''), func.get('description', ''))
             )
         print(f"Inserite {len(all_api_functions)} funzioni nel database.")
     conn.commit()

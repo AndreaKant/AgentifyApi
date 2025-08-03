@@ -7,6 +7,8 @@ from indexer.parsers import parse_grpc_contracts_via_service, parse_graphql_sche
 from indexer.db_utils import create_table_if_not_exists, insert_api_functions
 from utils.database import get_db_connection
 from utils.embeddings import get_embedding
+from indexer.enricher import enrich_api_function
+from utils.llm_api import call_llm
 
 # Carica le variabili d'ambiente dal file .env
 load_dotenv()
@@ -63,15 +65,24 @@ def main():
         }
     ]
     all_api_functions.extend(pokemon_apis)
-    
-     # 3. Indicizza le funzioni nel Database
-    if not all_api_functions:
+
+    # 3: ARRICCHIMENTO DELLE DESCRIZIONI CON LLM 
+    print("\n--- Inizio Arricchimento Semantico delle Funzioni ---")
+    enriched_functions = []
+    for func in all_api_functions:
+        new_desc = enrich_api_function(func, call_llm) 
+        func["description"] = new_desc
+        print(f"      ✅ Descrizione per '{func['name']}' arricchita.")
+        enriched_functions.append(func)
+
+    # 4. Indicizza le funzioni nel Database
+    if not enriched_functions:
         print("❌ Nessuna funzione da indicizzare. Termino.")
         conn.close()
         return
 
-    print(f"\n✅ Trovate in totale {len(all_api_functions)} funzioni API da indicizzare.")
-    insert_api_functions(conn, all_api_functions, get_embedding) # Passiamo la funzione get_embedding
+    print(f"\n✅ Trovate in totale {len(enriched_functions)} funzioni API da indicizzare.")
+    insert_api_functions(conn, enriched_functions, get_embedding) 
 
     conn.close()
     print("\n🎉 Indicizzazione completata con successo!")
